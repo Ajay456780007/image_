@@ -1,0 +1,70 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+def generate_confusion_matrix(accuracy, sensitivity, specificity, n_samples, class_names):
+    """
+    Generate a confusion matrix with random but consistent values
+    that match accuracy, sensitivity, and specificity approximately.
+
+    Parameters:
+        accuracy (float): Model accuracy (0-1)
+        sensitivity (float): Model sensitivity/recall (0-1)
+        specificity (float): Model specificity (0-1)
+        n_samples (int): Total number of samples
+        class_names (list): List of class names
+    """
+    n_classes = len(class_names)
+    cm = np.zeros((n_classes, n_classes), dtype=int)
+
+    # Split samples equally among classes
+    samples_per_class = n_samples // n_classes
+
+    for i in range(n_classes):
+        # Base true positives for class i
+        tp = int(samples_per_class * (0.6 + 0.4 * np.random.rand()))  # introduce variation
+        
+        # Adjust tp depending on sensitivity/specificity
+        if sensitivity > specificity:
+            tp = int(samples_per_class * (0.7 + 0.2 * np.random.rand()))
+        else:
+            tp = int(samples_per_class * (0.5 + 0.2 * np.random.rand()))
+        
+        fn = samples_per_class - tp  # False negatives for class i
+
+        # Randomly distribute FN to other classes
+        off_diag = np.random.multinomial(fn, [1/(n_classes-1)]*(n_classes-1))
+        k = 0
+        for j in range(n_classes):
+            if i == j:
+                cm[i, j] = tp
+            else:
+                cm[i, j] = off_diag[k]
+                k += 1
+
+    # Normalize confusion matrix to match desired accuracy
+    total_correct = np.trace(cm)
+    current_acc = total_correct / n_samples
+    scale_factor = accuracy / current_acc if current_acc > 0 else 1.0
+    cm = (cm.astype(float) * scale_factor).astype(int)
+
+    # Final adjustment to keep total = n_samples
+    diff = n_samples - cm.sum()
+    if diff != 0:
+        cm[0, 0] += diff
+
+    # Plot confusion matrix
+    plt.figure(figsize=(7, 6))
+    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=class_names, yticklabels=class_names)
+    plt.xlabel("Predicted")
+    plt.ylabel("Actual")
+    plt.title("Confusion Matrix (Generated)")
+    plt.show()
+
+    return cm
+
+
+# Example usage:
+class_names = ["Class A", "Class B", "Class C", "Class D", "Class E"]
+cm = generate_confusion_matrix(accuracy=0.85, sensitivity=0.75, specificity=0.70, n_samples=2000, class_names=class_names)
+print(cm)
